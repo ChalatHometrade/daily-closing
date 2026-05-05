@@ -77,6 +77,7 @@
       color: var(--green);
       font-weight: 800;
       font-size: 14px;
+      white-space: pre-line;
     }
 
     h1 {
@@ -281,6 +282,11 @@
       touch-action: manipulation;
     }
 
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
+
     .primary {
       background: var(--brand);
       color: #fff;
@@ -372,6 +378,107 @@
       color: var(--green);
       font-weight: 800;
       text-align: center;
+      white-space: pre-line;
+    }
+
+    .sheet-panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fffaf1;
+      margin-top: 12px;
+      padding: 12px;
+    }
+
+    .sheet-status {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .sheet-status.sending {
+      color: var(--orange);
+    }
+
+    .sheet-status.success {
+      color: var(--green);
+    }
+
+    .sheet-status.error {
+      color: var(--red);
+    }
+
+    .sheet-last {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(24, 28, 26, 0.48);
+      padding: 16px;
+    }
+
+    .modal.open {
+      display: flex;
+    }
+
+    .modal-card {
+      width: min(100%, 440px);
+      max-height: calc(100vh - 32px);
+      overflow: auto;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+      padding: 16px;
+    }
+
+    .modal-card h3 {
+      margin: 0 0 10px;
+      font-size: 20px;
+      line-height: 1.25;
+    }
+
+    .modal-summary {
+      display: grid;
+      gap: 8px;
+      margin: 12px 0;
+      color: var(--text);
+      font-size: 15px;
+    }
+
+    .modal-summary div {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 8px;
+    }
+
+    .modal-summary strong {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .modal-error {
+      margin-top: 10px;
+      color: var(--red);
+      font-size: 13px;
+      word-break: break-word;
+    }
+
+    .modal-actions {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 14px;
     }
 
     .footer-actions {
@@ -393,6 +500,10 @@
 
       .actions,
       .footer-actions {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .modal-actions {
         grid-template-columns: 1fr 1fr;
       }
 
@@ -482,6 +593,10 @@
           <label for="kshopMay">KShop มาย</label>
           <input id="kshopMay" type="number" min="0" inputmode="decimal" placeholder="0">
         </div>
+        <div>
+          <label for="khonLaKhrueng">คนละครึ่ง</label>
+          <input id="khonLaKhrueng" type="number" min="0" inputmode="decimal" placeholder="0">
+        </div>
       </div>
       <div class="money-line">
         <span>KShop รวม</span>
@@ -535,6 +650,16 @@
       </div>
       <label for="deliveryOrderCount">จำนวนออเดอร์ Rider / Delivery</label>
       <input id="deliveryOrderCount" type="number" min="0" step="1" inputmode="numeric" placeholder="0">
+      <div class="grid-2" style="margin-top: 12px;">
+        <div>
+          <label for="cupCount">จำนวนแก้ว</label>
+          <input id="cupCount" type="number" min="0" step="1" inputmode="numeric" placeholder="0">
+        </div>
+        <div>
+          <label for="snackCount">จำนวนขนม</label>
+          <input id="snackCount" type="number" min="0" step="1" inputmode="numeric" placeholder="0">
+        </div>
+      </div>
     </section>
 
     <section class="card" aria-labelledby="resultTitle">
@@ -563,6 +688,11 @@
       </div>
       <label for="summaryMessage">ข้อความสำหรับส่ง CEO ทาง LINE</label>
       <textarea id="summaryMessage" readonly></textarea>
+      <div class="sheet-panel">
+        <button class="primary" type="button" id="updateGoogleSheet">อัปเดต Google Sheet</button>
+        <div id="sheetSubmitStatus" class="sheet-status" aria-live="polite">ยังไม่ได้อัปเดต</div>
+        <div id="sheetLastSubmit" class="sheet-last"></div>
+      </div>
       <div class="footer-actions">
         <button class="primary copy-action" type="button" id="copySummary">คัดลอกข้อความสรุป</button>
         <button class="secondary" type="button" id="sampleData">ใส่ข้อมูลตัวอย่าง</button>
@@ -573,11 +703,26 @@
     </section>
   </main>
 
+  <div id="sheetConfirmModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="sheetConfirmTitle">
+    <div class="modal-card">
+      <h3 id="sheetConfirmTitle">ยืนยันการอัปเดต Google Sheet</h3>
+      <div id="sheetConfirmSummary" class="modal-summary"></div>
+      <div id="sheetModalStatus" class="sheet-status">ยังไม่ได้อัปเดต</div>
+      <div id="sheetModalError" class="modal-error"></div>
+      <div class="modal-actions">
+        <button class="secondary" type="button" id="cancelSheetSubmit">ยกเลิก</button>
+        <button class="primary" type="button" id="confirmSheetSubmit">ยืนยันอัปเดต</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     (function () {
       "use strict";
 
       var STORAGE_KEY = "coffeeDailyClosing.v1";
+      var GOOGLE_SHEET_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxpbKdTr92aFqqhLDFbAoSNDb_FAJ2xqw3_K0nNSyfpDO1cyZn1nxHBT_vpT7XEs-Es/exec";
+      var SHEET_TIMEOUT_MS = 20000;
       var denominations = [
         { key: "note1000", label: "ธนบัตร 1,000", value: 1000 },
         { key: "note500", label: "ธนบัตร 500", value: 500 },
@@ -595,18 +740,24 @@
         "openingCashFloat",
         "kshopMek",
         "kshopMay",
+        "khonLaKhrueng",
         "posTotal",
         "b2bTotal",
         "pMayTotal",
         "bankDeposit",
-        "deliveryOrderCount"
+        "deliveryOrderCount",
+        "cupCount",
+        "snackCount"
       ];
 
       var el = {};
       var state = {
         expenses: [],
-        specialIncome: []
+        specialIncome: [],
+        lastSheetSubmitAt: "",
+        lastSheetSubmitDate: ""
       };
+      var isSubmittingToSheet = false;
 
       document.addEventListener("DOMContentLoaded", init);
 
@@ -646,6 +797,15 @@
           "copyNotice",
           "topNotice",
           "topResetData",
+          "updateGoogleSheet",
+          "sheetSubmitStatus",
+          "sheetLastSubmit",
+          "sheetConfirmModal",
+          "sheetConfirmSummary",
+          "sheetModalStatus",
+          "sheetModalError",
+          "cancelSheetSubmit",
+          "confirmSheetSubmit",
           "sampleData",
           "resetData",
           "exportCsv"
@@ -698,6 +858,14 @@
 
         el.copySummary.addEventListener("click", copySummary);
         el.topResetData.addEventListener("click", resetData);
+        el.updateGoogleSheet.addEventListener("click", openSheetConfirm);
+        el.cancelSheetSubmit.addEventListener("click", closeSheetConfirm);
+        el.confirmSheetSubmit.addEventListener("click", submitToGoogleSheet);
+        el.sheetConfirmModal.addEventListener("click", function (event) {
+          if (event.target === el.sheetConfirmModal && !isSubmittingToSheet) {
+            closeSheetConfirm();
+          }
+        });
         el.sampleData.addEventListener("click", fillSampleData);
         el.resetData.addEventListener("click", resetData);
         el.exportCsv.addEventListener("click", exportCsv);
@@ -753,7 +921,8 @@
         var totalSpecialIncome = sumRows(state.specialIncome);
         var kshopMek = num(el.kshopMek.value);
         var kshopMay = num(el.kshopMay.value);
-        var totalKShop = kshopMek + kshopMay;
+        var khonLaKhrueng = num(el.khonLaKhrueng.value);
+        var totalKShop = kshopMek + kshopMay + khonLaKhrueng;
         var openingCashFloat = num(el.openingCashFloat.value);
         var totalReceived = totalKShop + countedCash - openingCashFloat + totalExpenses - totalSpecialIncome;
         var posTotal = num(el.posTotal.value);
@@ -764,6 +933,8 @@
         var bankDeposit = num(el.bankDeposit.value);
         var remainingCashFloat = countedCash - bankDeposit;
         var deliveryOrderCount = intNum(el.deliveryOrderCount.value);
+        var cupCount = intNum(el.cupCount.value);
+        var snackCount = intNum(el.snackCount.value);
 
         return {
           countedCash: countedCash,
@@ -771,6 +942,7 @@
           totalSpecialIncome: totalSpecialIncome,
           kshopMek: kshopMek,
           kshopMay: kshopMay,
+          khonLaKhrueng: khonLaKhrueng,
           totalKShop: totalKShop,
           openingCashFloat: openingCashFloat,
           totalReceived: totalReceived,
@@ -781,7 +953,9 @@
           difference: difference,
           bankDeposit: bankDeposit,
           remainingCashFloat: remainingCashFloat,
-          deliveryOrderCount: deliveryOrderCount
+          deliveryOrderCount: deliveryOrderCount,
+          cupCount: cupCount,
+          snackCount: snackCount
         };
       }
 
@@ -816,6 +990,7 @@
         el.statusText.textContent = statusText;
         el.differenceText.textContent = "ผลต่าง " + signedMoney(c.difference);
         el.summaryMessage.value = buildSummary(c, statusText);
+        renderSheetLastSubmit();
       }
 
       function buildRowDetailLines(title, rows, totalLabel, totalValue) {
@@ -857,6 +1032,7 @@
           "",
           "KShop เมฆ: " + money(c.kshopMek),
           "KShop มาย: " + money(c.kshopMay),
+          "คนละครึ่ง: " + money(c.khonLaKhrueng),
           "KShop รวม: " + money(c.totalKShop),
           "",
           "รวมเงินรับ: " + money(c.totalReceived),
@@ -872,7 +1048,9 @@
           "",
           "เงินฝาก: " + money(c.bankDeposit),
           "เงินแกะคงเหลือหลังฝาก: " + money(c.remainingCashFloat),
-          "จำนวนออเดอร์ส่ง: " + c.deliveryOrderCount.toLocaleString("th-TH") + " ออเดอร์"
+          "จำนวนออเดอร์ส่ง: " + c.deliveryOrderCount.toLocaleString("th-TH") + " ออเดอร์",
+          "จำนวนแก้ว: " + c.cupCount.toLocaleString("th-TH") + " แก้ว",
+          "จำนวนขนม: " + c.snackCount.toLocaleString("th-TH") + " ชิ้น"
           ]
         ).join("\n");
       }
@@ -935,7 +1113,9 @@
           fields: {},
           denominations: {},
           expenses: state.expenses,
-          specialIncome: state.specialIncome
+          specialIncome: state.specialIncome,
+          lastSheetSubmitAt: state.lastSheetSubmitAt,
+          lastSheetSubmitDate: state.lastSheetSubmitDate
         };
 
         fields.forEach(function (id) {
@@ -984,6 +1164,8 @@
 
         state.expenses = Array.isArray(saved.expenses) ? saved.expenses : [];
         state.specialIncome = Array.isArray(saved.specialIncome) ? saved.specialIncome : [];
+        state.lastSheetSubmitAt = saved.lastSheetSubmitAt || "";
+        state.lastSheetSubmitDate = saved.lastSheetSubmitDate || "";
         if (!el.closingDate.value) el.closingDate.value = todayISO();
       }
 
@@ -991,6 +1173,223 @@
         var now = new Date();
         var tzOffset = now.getTimezoneOffset() * 60000;
         return new Date(now.getTime() - tzOffset).toISOString().slice(0, 10);
+      }
+
+      function formatClock(date) {
+        return date.toLocaleTimeString("th-TH", {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      }
+
+      function formatDateTime(value) {
+        if (!value) return "";
+        var date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "";
+        return date.toLocaleString("th-TH", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      }
+
+      function getStatusText(difference) {
+        if (difference < 0) return "เงินขาด";
+        if (difference > 0) return "เงินเกิน";
+        return "ยอดตรง";
+      }
+
+      function setSheetStatus(text, type) {
+        el.sheetSubmitStatus.textContent = text;
+        el.sheetModalStatus.textContent = text;
+        el.sheetSubmitStatus.className = "sheet-status" + (type ? " " + type : "");
+        el.sheetModalStatus.className = "sheet-status" + (type ? " " + type : "");
+      }
+
+      function setSheetButtonState(text, disabled) {
+        el.updateGoogleSheet.textContent = text;
+        el.updateGoogleSheet.disabled = disabled;
+        el.confirmSheetSubmit.disabled = disabled;
+      }
+
+      function renderSheetLastSubmit() {
+        var text = formatDateTime(state.lastSheetSubmitAt);
+        el.sheetLastSubmit.textContent = text ? "ส่งล่าสุด: " + text : "";
+      }
+
+      function openSheetConfirm() {
+        if (isSubmittingToSheet) {
+          setSheetStatus("กำลังอัปเดตอยู่ กรุณารอสักครู่", "sending");
+          return;
+        }
+
+        var c = calculate();
+        var statusText = getStatusText(c.difference);
+        el.sheetConfirmSummary.innerHTML = [
+          ["วันที่", el.closingDate.value || "-"],
+          ["รวมเงินรับ", money(c.totalReceived)],
+          ["รวมฝั่งระบบ", money(c.systemTotal)],
+          ["ผลต่าง", signedMoney(c.difference)],
+          ["สถานะ", statusText],
+          ["เงินแกะคงเหลือหลังฝาก", money(c.remainingCashFloat)]
+        ].map(function (row) {
+          return "<div><span>" + row[0] + "</span><strong>" + row[1] + "</strong></div>";
+        }).join("");
+        el.sheetModalError.textContent = "";
+        el.sheetConfirmModal.classList.add("open");
+        setSheetStatus("ยังไม่ได้อัปเดต", "");
+        setSheetButtonState("อัปเดต Google Sheet", false);
+      }
+
+      function closeSheetConfirm() {
+        if (isSubmittingToSheet) return;
+        el.sheetConfirmModal.classList.remove("open");
+        el.sheetModalError.textContent = "";
+      }
+
+      function getMoneyRowDetails(rows) {
+        return rows.filter(function (row) {
+          return num(row.amount) !== 0;
+        }).map(function (row) {
+          return {
+            name: String(row.name || "").trim() || "ไม่ระบุรายการ",
+            amount: num(row.amount)
+          };
+        });
+      }
+
+      function getDenominationQuantities() {
+        var quantities = {};
+        denominations.forEach(function (denom) {
+          quantities[denom.key] = intNum(el[denom.key].value);
+        });
+        return quantities;
+      }
+
+      function buildSheetPayload() {
+        var c = calculate();
+        var expenseDetails = getMoneyRowDetails(state.expenses);
+        var specialIncomeDetails = getMoneyRowDetails(state.specialIncome);
+        var denominationQuantities = getDenominationQuantities();
+        return {
+          sheetName: "daily_closing",
+          date: el.closingDate.value || "",
+          submittedAt: new Date().toISOString(),
+          denominationQuantities: denominationQuantities,
+          countedCash: c.countedCash,
+          openingCashFloat: c.openingCashFloat,
+          totalExpenses: c.totalExpenses,
+          expenses: expenseDetails,
+          expenseDetails: expenseDetails,
+          totalSpecialIncome: c.totalSpecialIncome,
+          specialIncome: specialIncomeDetails,
+          specialIncomeDetails: specialIncomeDetails,
+          kshopMek: c.kshopMek,
+          kshopMay: c.kshopMay,
+          khonLaKhrueng: c.khonLaKhrueng,
+          totalKShop: c.totalKShop,
+          totalReceived: c.totalReceived,
+          posTotal: c.posTotal,
+          b2bTotal: c.b2bTotal,
+          pMayTotal: c.pMayTotal,
+          systemTotal: c.systemTotal,
+          difference: c.difference,
+          status: getStatusText(c.difference),
+          bankDeposit: c.bankDeposit,
+          remainingCashFloat: c.remainingCashFloat,
+          deliveryOrderCount: c.deliveryOrderCount,
+          cupCount: c.cupCount,
+          snackCount: c.snackCount,
+          summaryMessage: el.summaryMessage.value
+        };
+      }
+
+      function fetchWithTimeout(url, options, timeoutMs) {
+        var controller = window.AbortController ? new AbortController() : null;
+        var timeoutId;
+        var didTimeout = false;
+
+        if (controller) {
+          options.signal = controller.signal;
+        }
+
+        var timeoutPromise = new Promise(function (_, reject) {
+          timeoutId = window.setTimeout(function () {
+            didTimeout = true;
+            if (controller) controller.abort();
+            reject(new Error("ใช้เวลานานเกินไป กรุณาลองใหม่"));
+          }, timeoutMs);
+        });
+
+        return Promise.race([
+          fetch(url, options),
+          timeoutPromise
+        ]).then(function (response) {
+          window.clearTimeout(timeoutId);
+          return response;
+        }).catch(function (error) {
+          window.clearTimeout(timeoutId);
+          if (didTimeout) {
+            throw new Error("ใช้เวลานานเกินไป กรุณาลองใหม่");
+          }
+          throw error;
+        });
+      }
+
+      function submitToGoogleSheet() {
+        if (isSubmittingToSheet) {
+          setSheetStatus("กำลังอัปเดตอยู่ กรุณารอสักครู่", "sending");
+          return;
+        }
+
+        isSubmittingToSheet = true;
+        setSheetButtonState("กำลังอัปเดต...", true);
+        setSheetStatus("กำลังอัปเดต Google Sheet...", "sending");
+        el.sheetModalError.textContent = "";
+
+        if (!GOOGLE_SHEET_WEB_APP_URL) {
+          handleSheetFailure(new Error("ยังไม่ได้ตั้งค่า Google Apps Script Web App URL"));
+          return;
+        }
+
+        fetchWithTimeout(GOOGLE_SHEET_WEB_APP_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+          },
+          body: JSON.stringify(buildSheetPayload())
+        }, SHEET_TIMEOUT_MS).then(function (response) {
+          if (!response.ok) {
+            throw new Error("HTTP " + response.status);
+          }
+          handleSheetSuccess();
+        }).catch(handleSheetFailure);
+      }
+
+      function handleSheetSuccess() {
+        var sentAt = new Date();
+        state.lastSheetSubmitAt = sentAt.toISOString();
+        state.lastSheetSubmitDate = el.closingDate.value || "";
+        saveState();
+        renderSheetLastSubmit();
+        isSubmittingToSheet = false;
+        el.sheetConfirmModal.classList.remove("open");
+        setSheetButtonState("อัปเดตแล้ว", false);
+        setSheetStatus("อัปเดตสำเร็จ เวลา " + formatClock(sentAt), "success");
+        showNotice("อัปเดต Google Sheet สำเร็จ\nวันที่: " + (el.closingDate.value || "-") + "\nเวลาที่ส่ง: " + formatClock(sentAt) + "\nสถานะ: สำเร็จ");
+      }
+
+      function handleSheetFailure(error) {
+        var message = error && error.message ? error.message : "";
+        var isTimeout = message.indexOf("ใช้เวลานานเกินไป") !== -1;
+        var visibleStatus = isTimeout ? "อัปเดตไม่สำเร็จ: ใช้เวลานานเกินไป กรุณาลองใหม่" : "อัปเดตไม่สำเร็จ";
+        isSubmittingToSheet = false;
+        setSheetButtonState("ลองอัปเดตอีกครั้ง", false);
+        setSheetStatus(visibleStatus, "error");
+        el.sheetModalError.textContent = "กรุณาตรวจสอบอินเทอร์เน็ต หรือ Google Apps Script Web App URL" + (message ? " (" + message + ")" : "");
+        showNotice("อัปเดต Google Sheet ไม่สำเร็จ\nกรุณาตรวจสอบอินเทอร์เน็ต หรือ Google Apps Script Web App URL");
       }
 
       function copySummary() {
@@ -1056,11 +1455,14 @@
         ];
         el.kshopMek.value = "8420";
         el.kshopMay.value = "3150";
+        el.khonLaKhrueng.value = "0";
         el.posTotal.value = "16607";
         el.b2bTotal.value = "820";
         el.pMayTotal.value = "260";
         el.bankDeposit.value = "6500";
         el.deliveryOrderCount.value = "37";
+        el.cupCount.value = "120";
+        el.snackCount.value = "18";
         renderRows("expenses");
         renderRows("specialIncome");
         saveAndRender();
@@ -1084,11 +1486,14 @@
         [
           "kshopMek",
           "kshopMay",
+          "khonLaKhrueng",
           "posTotal",
           "b2bTotal",
           "pMayTotal",
           "bankDeposit",
-          "deliveryOrderCount"
+          "deliveryOrderCount",
+          "cupCount",
+          "snackCount"
         ].forEach(function (id) {
           el[id].value = "";
         });
@@ -1116,6 +1521,7 @@
           ["รายรับพิเศษรวม", c.totalSpecialIncome],
           ["KShop เมฆ", c.kshopMek],
           ["KShop มาย", c.kshopMay],
+          ["คนละครึ่ง", c.khonLaKhrueng],
           ["KShop รวม", c.totalKShop],
           ["รวมเงินรับ", c.totalReceived],
           ["POS", c.posTotal],
@@ -1126,7 +1532,9 @@
           ["สถานะ", statusText],
           ["เงินฝาก", c.bankDeposit],
           ["เงินแกะคงเหลือหลังฝาก", c.remainingCashFloat],
-          ["จำนวนออเดอร์ส่ง", c.deliveryOrderCount]
+          ["จำนวนออเดอร์ส่ง", c.deliveryOrderCount],
+          ["จำนวนแก้ว", c.cupCount],
+          ["จำนวนขนม", c.snackCount]
         ];
         var csv = "\ufeff" + rows.map(function (row) {
           return row.map(csvCell).join(",");
